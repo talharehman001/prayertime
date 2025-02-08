@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namaj Time Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #A7C7E7, #2C3E50);
+            color: #2C3E50;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .search-box {
+            margin-bottom: 15px;
+        }
+        input {
+            padding: 8px;
+            width: 70%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 8px 12px;
+            background: #2C3E50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .prayer-times {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .prayer-times div {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Today's Prayer Schedule (Bangladesh Time)</h2>
+        <p id="current-date-time"></p>
+        <div class="search-box">
+            <input type="text" id="city" placeholder="Enter city" value="Jessore">
+            <button onclick="fetchPrayerTimes()">Find</button>
+        </div>
+        <div class="prayer-times" id="prayer-times">
+            <div><strong>Fajr</strong> <span id="fajr"></span></div>
+            <div><strong>Dhuhr</strong> <span id="dhuhr"></span></div>
+            <div><strong>Asr</strong> <span id="asr"></span></div>
+            <div><strong>Maghrib</strong> <span id="maghrib"></span></div>
+            <div><strong>Isha</strong> <span id="isha"></span></div>
+        </div>
+    </div>
+
+    <script>
+        function updateDateTime() {
+            let now = new Date();
+            let options = { timeZone: "Asia/Dhaka", year: "numeric", month: "long", day: "numeric", weekday: "long", hour: "2-digit", minute: "2-digit", second: "2-digit" };
+            document.getElementById("current-date-time").textContent = new Intl.DateTimeFormat("en-US", options).format(now);
+        }
+        
+        async function fetchPrayerTimes() {
+            try {
+                let city = document.getElementById("city").value || "Jessore";
+                let response = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=BD&method=2`);
+                let data = await response.json();
+                let timings = data.data.timings;
+                
+                function convertToBangladeshTime(timeStr) {
+                    let [hours, minutes] = timeStr.split(":" ).map(Number);
+                    let date = new Date();
+                    date.setUTCHours(hours, minutes, 0, 0);
+                    return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Dhaka" }).format(date);
+                }
+                
+                document.getElementById("fajr").textContent = convertToBangladeshTime(timings.Fajr);
+                document.getElementById("dhuhr").textContent = convertToBangladeshTime(timings.Dhuhr);
+                document.getElementById("asr").textContent = convertToBangladeshTime(timings.Asr);
+                document.getElementById("maghrib").textContent = convertToBangladeshTime(timings.Maghrib);
+                document.getElementById("isha").textContent = convertToBangladeshTime(timings.Isha);
+            } catch (error) {
+                console.error("Error fetching prayer times:", error);
+            }
+        }
+
+        window.onload = function() {
+            updateDateTime();
+            fetchPrayerTimes();
+            setInterval(updateDateTime, 1000);
+        };
+    </script>
+</body>
+</html>
