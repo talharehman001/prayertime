@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namaj Time Finder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #A7C7E7, #2C3E50);
+            color: #2C3E50;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .time-box {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        .search-box {
+            margin-bottom: 15px;
+        }
+        input {
+            padding: 8px;
+            width: 80%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 8px 12px;
+            background: #2C3E50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #countdown {
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .slideshow-container {
+            max-width: 100%;
+            position: relative;
+            margin: auto;
+        }
+        .slide {
+            display: none;
+            width: 100%;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Today's Prayer Schedule</h2>
+        <div class="slideshow-container">
+            <img class="slide" src="mosque1.jpg" alt="Mosque 1">
+            <img class="slide" src="mosque2.jpg" alt="Mosque 2">
+            <img class="slide" src="mosque3.jpg" alt="Mosque 3">
+        </div>
+        <div class="search-box">
+            <input type="text" id="city" placeholder="Enter city" value="Jessore">
+            <button onclick="getPrayerTimes()">Find</button>
+        </div>
+        <div id="prayer-times"></div>
+        <div id="countdown">Next prayer in: --:--:--</div>
+    </div>
+
+    <script>
+        async function getPrayerTimes() {
+            let city = document.getElementById("city").value || "Jessore";
+            let response = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=BD&method=2`);
+            let data = await response.json();
+            let timings = data.data.timings;
+            
+            let prayerHTML = "";
+            let prayerNames = {Fajr: "Fajr", Dhuhr: "Dhuhr", Asr: "Asr", Maghrib: "Maghrib", Isha: "Isha"};
+            let prayerTimesArray = [];
+            
+            for (let prayer in prayerNames) {
+                prayerHTML += `<div class='time-box'><strong>${prayerNames[prayer]}</strong> <span>${timings[prayer]}</span></div>`;
+                prayerTimesArray.push({name: prayerNames[prayer], time: timings[prayer]});
+            }
+            
+            document.getElementById("prayer-times").innerHTML = prayerHTML;
+            updateCountdown(prayerTimesArray);
+        }
+        
+        function updateCountdown(prayerTimes) {
+            function calculateNextPrayer() {
+                let now = new Date();
+                now.setHours(now.getHours() + 6); // Convert to Bangladesh time (UTC+6)
+                
+                for (let prayer of prayerTimes) {
+                    let [hours, minutes] = prayer.time.split(":");
+                    let prayerTime = new Date(now);
+                    prayerTime.setHours(parseInt(hours));
+                    prayerTime.setMinutes(parseInt(minutes));
+                    prayerTime.setSeconds(0);
+                    
+                    if (prayerTime > now) {
+                        return {name: prayer.name, time: prayerTime};
+                    }
+                }
+                return null;
+            }
+            
+            function startTimer() {
+                let nextPrayer = calculateNextPrayer();
+                if (!nextPrayer) return;
+                
+                let countdownElement = document.getElementById("countdown");
+                function updateTime() {
+                    let now = new Date();
+                    now.setHours(now.getHours() + 6); // Convert to Bangladesh time (UTC+6)
+                    let diff = Math.max((nextPrayer.time - now) / 1000, 0);
+                    let hours = Math.floor(diff / 3600);
+                    let minutes = Math.floor((diff % 3600) / 60);
+                    let seconds = Math.floor(diff % 60);
+                    countdownElement.innerHTML = `Next prayer (${nextPrayer.name}) in: ${hours}:${minutes}:${seconds}`;
+                    
+                    if (diff > 0) {
+                        setTimeout(updateTime, 1000);
+                    } else {
+                        getPrayerTimes();
+                    }
+                }
+                updateTime();
+            }
+            startTimer();
+        }
+        
+        function startSlideshow() {
+            let slides = document.getElementsByClassName("slide");
+            let index = 0;
+            function showSlides() {
+                for (let slide of slides) {
+                    slide.style.display = "none";
+                }
+                slides[index].style.display = "block";
+                index = (index + 1) % slides.length;
+                setTimeout(showSlides, 3000);
+            }
+            showSlides();
+        }
+        
+        window.onload = function() {
+            getPrayerTimes();
+            startSlideshow();
+        };
+    </script>
+</body>
+</html>
